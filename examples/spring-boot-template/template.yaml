@@ -108,7 +108,7 @@ spec:
       input:
         recipients: entity
         entityRefs:
-          - user:default/guest
+          - ${{ parameters.owner }}
         title: 'Spring Boot service created'
         info: 'Your Spring Boot service ${{ parameters.name }} has been created'
         severity: normal

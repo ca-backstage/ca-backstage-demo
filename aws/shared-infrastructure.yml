@@ -1,8 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   Shared infrastructure for Backstage-scaffolded Spring Boot apps.
-  Deploys VPC, subnets, ECS cluster, security group, and CloudWatch log group.
-  NOTE: ecsTaskExecutionRole must be created separately (requires IAM admin).
+  Deploys VPC, subnets, ECS cluster, security group, IAM execution role, and CloudWatch log group.
 
 Parameters:
   ClusterName:
@@ -96,6 +95,21 @@ Resources:
         - Name: containerInsights
           Value: disabled
 
+  # IAM Execution Role for ECS Tasks
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ecsTaskExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
   # CloudWatch Log Group
   LogGroup:
     Type: AWS::Logs::LogGroup
@@ -145,3 +159,9 @@ Outputs:
     Value: !Ref LogGroup
     Export:
       Name: backstage-log-group-name
+
+  EcsTaskExecutionRoleArn:
+    Description: ECS Task Execution Role ARN
+    Value: !GetAtt EcsTaskExecutionRole.Arn
+    Export:
+      Name: backstage-ecs-execution-role-arn

@@ -31,8 +31,8 @@ The service starts on port 8080.
 
 ## Endpoints
 
-- Health check: `GET /health`
-- Actuator health: `GET /actuator/health`
+- Health: `GET /actuator/health`
+- Info: `GET /actuator/info`
 
 ## Docker
 

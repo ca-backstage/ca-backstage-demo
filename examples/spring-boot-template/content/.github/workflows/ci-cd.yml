@@ -143,12 +143,18 @@ jobs:
             --region ${{ "${{ env.AWS_REGION }}" }}
 
       - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ "${{ steps.render-task-def.outputs.task-definition }}" }}
-          service: ${{ "${{ env.ECS_SERVICE }}" }}
-          cluster: ${{ "${{ env.ECS_CLUSTER }}" }}
-          wait-for-service-stability: true
+        run: |
+          aws ecs update-service \
+            --cluster ${{ "${{ env.ECS_CLUSTER }}" }} \
+            --service ${{ "${{ env.ECS_SERVICE }}" }} \
+            --task-definition ${{ "${{ steps.register-task-def.outputs.task_def_arn }}" }} \
+            --force-new-deployment \
+            --region ${{ "${{ env.AWS_REGION }}" }}
+          echo "Waiting for service stability..."
+          aws ecs wait services-stable \
+            --cluster ${{ "${{ env.ECS_CLUSTER }}" }} \
+            --services ${{ "${{ env.ECS_SERVICE }}" }} \
+            --region ${{ "${{ env.AWS_REGION }}" }}
 
       - name: Print service public IP
         if: success()

@@ -1,7 +1,7 @@
 # Context
 
 ## Current State
-Java Spring Boot scaffolder template deploys to AWS ECS Fargate via ECR. Shared AWS infrastructure deployed via CloudFormation (stack `backstage-shared-infra` in us-east-2). GitHub Actions plugin wired into CI/CD tab. CI/CD workflow fixed: added explicit task definition registration step before ECS service creation to prevent "TaskDefinition not found" error on first deploy.
+Java Spring Boot scaffolder template deploys to AWS ECS Fargate via ECR. Shared AWS infrastructure deployed via CloudFormation (stack `backstage-shared-infra` in us-east-2). GitHub Actions plugin wired into CI/CD tab. Code review completed and fixes applied. CloudFormation stack needs update to add ecsTaskExecutionRole (was missing, causing deploy failures).
 
 ## What Was Done
 1. Created `examples/spring-boot-template/template.yaml` - Scaffolder template definition with wizard form (name, description, owner, javaPackage, springBootVersion, repoUrl)
@@ -16,7 +16,6 @@ Java Spring Boot scaffolder template deploys to AWS ECS Fargate via ECR. Shared 
    - `.github/workflows/ci-cd.yml` - GitHub Actions pipeline (build, test, deploy to AWS ECR + ECS Fargate)
    - `aws/task-definition.json` - ECS Fargate task definition template
    - `src/main/java/${{values.javaPackageDir}}/Application.java` - Spring Boot main class
-   - `src/main/java/${{values.javaPackageDir}}/controller/HealthController.java` - Health endpoint
    - `src/main/resources/application.yml` - Spring config with actuator
    - `src/test/java/${{values.javaPackageDir}}/ApplicationTests.java` - Context load test
 3. Added Spring Boot template location to `app-config.yaml` and `app-config.production.yaml` catalog locations
@@ -51,9 +50,11 @@ Java Spring Boot scaffolder template deploys to AWS ECS Fargate via ECR. Shared 
 - ECS cluster `backstage-apps` exists (created by CloudFormation stack)
 
 ## Next Steps
-1. Scaffold a new repo (or re-run CI/CD on comptest7) to verify the task definition registration fix works end-to-end
-2. Verify the deploy job succeeds: task def registered -> service created -> deployment stable
-3. Test the full flow locally with `yarn start` (requires GITHUB_TOKEN env var)
+1. Update CloudFormation stack to add ecsTaskExecutionRole: `aws cloudformation update-stack --stack-name backstage-shared-infra --template-body file://aws/shared-infrastructure.yml --capabilities CAPABILITY_NAMED_IAM --region us-east-2`
+2. Wait for stack update: `aws cloudformation wait stack-update-complete --stack-name backstage-shared-infra --region us-east-2`
+3. Re-run comptest9 CI/CD (or scaffold a new repo) to verify deploy succeeds end-to-end
+4. Verify: task def registered -> service created -> task running -> public IP accessible
+5. Check if CI/CD IAM user needs iam:PassRole permission (may surface as next error)
 
 ## Deploy Command
 ```
@@ -73,12 +74,15 @@ aws cloudformation describe-stacks --stack-name backstage-shared-infra --region 
 ```
 
 ## Recent Changes
-- Fixed comptest7 deploy failure: "TaskDefinition not found" when creating ECS service. Root cause: the `amazon-ecs-render-task-definition@v1` action only modifies JSON locally, does not register with AWS. The create-service step ran before the deploy action could register it. Fix: added explicit `aws ecs register-task-definition` step between render and create-service, and changed create-service to use the registered task definition ARN instead of the family name.
-- Diagnosed comptest6 deploy failure: CloudFormation stack `backstage-shared-infra` was never deployed to AWS. Build/test/ECR push all succeed. Failure at "Get shared infrastructure outputs" step.
-- Fixed: Added `repoVisibility: public` to template.yaml publish:github step. Scaffolded repos were private by default, but org secrets on free plan are only available to public repos. This caused "Could not load credentials from any providers" in the deploy job.
+- Fixed comptest9 deploy failure: ecsTaskExecutionRole did not exist. Added IAM role to CloudFormation template (aws/shared-infrastructure.yml) with ecs-tasks.amazonaws.com trust policy and AmazonECSTaskExecutionRolePolicy managed policy. Stack update required.
+- Code review: fixed ECS health check (curl -> wget for Alpine compatibility in task-definition.json)
+- Code review: eliminated double task definition registration (replaced amazon-ecs-deploy-task-definition action with CLI update-service using the already-registered ARN)
+- Code review: disabled plain JAR in build.gradle so Dockerfile COPY glob only picks up the fat JAR
+- Code review: notification in template.yaml now sends to actual owner instead of hardcoded guest
+- Code review: removed redundant HealthController.java (Actuator /actuator/health already exists)
+- Code review: extracted GitHub OAuth clientId/clientSecret to env vars in app-config.yaml
+- Code review: disabled guest auth in app-config.production.yaml
+- Fixed comptest7 deploy failure: "TaskDefinition not found" when creating ECS service
+- Fixed: Added `repoVisibility: public` to template.yaml publish:github step
 - Created `aws/shared-infrastructure.yml` CloudFormation template for shared AWS infrastructure
-- Created `examples/spring-boot-template/content/aws/task-definition.json` ECS task definition template
 - Replaced CI/CD workflow: GHCR push -> ECR push + ECS Fargate deploy
-- Updated template.yaml description and tags (added `aws` tag)
-- Added spring-boot-template to `app-config.production.yaml` catalog locations
-- Updated template README.md with AWS deployment docs and required secrets
