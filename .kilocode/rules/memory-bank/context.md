@@ -1,7 +1,7 @@
 # Context
 
 ## Current State
-Java Spring Boot scaffolder template has been implemented. The GitHub Actions plugin has been wired into the CI/CD tab.
+Java Spring Boot scaffolder template has been implemented. The GitHub Actions plugin has been wired into the CI/CD tab. CI/CD workflow fixed to specify gradle-version so it doesn't require gradlew wrapper scripts.
 
 ## What Was Done
 1. Created `examples/spring-boot-template/template.yaml` - Scaffolder template definition with wizard form (name, description, owner, javaPackage, springBootVersion, repoUrl)
@@ -21,9 +21,11 @@ Java Spring Boot scaffolder template has been implemented. The GitHub Actions pl
 3. Added Spring Boot template location to `app-config.yaml` catalog locations
 4. Installed `@backstage-community/plugin-github-actions` (v0.21.1) in frontend package
 5. Updated `EntityPage.tsx` - Replaced CI/CD placeholder with GitHub Actions plugin, removed unused Button import
+6. Fixed CI/CD workflow: added `checks: write` permission (dorny/test-reporter needs it for GitHub Checks API)
+7. Migrated from deprecated `gradle/gradle-build-action@v3` to `gradle/actions/setup-gradle@v3` with separate run steps
 
 ## What Does Not Exist Yet
-- gradlew / gradlew.bat wrapper scripts (CI uses gradle-build-action which handles this; README instructs `gradle wrapper` for local dev)
+- gradlew / gradlew.bat wrapper scripts (not needed for CI since gradle-build-action now uses gradle-version: '8.13'; README instructs `gradle wrapper` for local dev)
 - Kubernetes cluster configuration
 - Proper RBAC (still using allow-all policy)
 - Production catalog sources
@@ -36,6 +38,9 @@ Java Spring Boot scaffolder template has been implemented. The GitHub Actions pl
 4. Verify CI/CD tab shows GitHub Actions for entities with the project-slug annotation
 
 ## Recent Changes
+- Fixed CI/CD workflow: added `checks: write` permission so dorny/test-reporter can create GitHub Check Runs
+- Migrated CI/CD workflow from deprecated `gradle/gradle-build-action@v3` to `gradle/actions/setup-gradle@v3` with separate `run: gradle ...` steps
+- Previously: added `gradle-version: '8.13'` so Gradle is downloaded directly instead of requiring missing gradlew wrapper script
 - Created Java Spring Boot scaffolder template (13 files)
 - Wired GitHub Actions plugin into EntityPage CI/CD tab
 - Updated app-config.yaml with new template location

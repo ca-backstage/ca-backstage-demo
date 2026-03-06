@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 permissions:
+  checks: write
   contents: read
   packages: write
 
@@ -21,9 +22,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/gradle-build-action@v3
+      - uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: build -x test
+          gradle-version: '8.13'
+
+      - name: Build
+        run: gradle build -x test
 
   test:
     runs-on: ubuntu-latest
@@ -35,9 +39,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/gradle-build-action@v3
+      - uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: test
+          gradle-version: '8.13'
+
+      - name: Test
+        run: gradle test
 
       - uses: dorny/test-reporter@v1
         if: success() || failure()
